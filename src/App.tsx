@@ -3,83 +3,37 @@ import Graph from "./components/Graph";
 
 export default function App() {
   const [data, setData] = useState<any>({
-    objects: [
-      {
-        _gvid: 0,
-        name: "n59c3461bb0314261aac777951822d116",
-        label: "natnum(s(s(0)))",
-      },
-      {
-        _gvid: 1,
-        name: "nc616392e619bd31992d0c280e25d04b6",
-        label: "natnum(_24094)=&gt;natnum(s(_24094))",
-      },
-      {
-        _gvid: 2,
-        name: "nc2ef889ce27470a1c0aeeb45737a5cfd",
-        label: "natnum(s(0))",
-      },
-      {
-        _gvid: 3,
-        name: "nf6dc22a3d2768555904d0b5e08cc944c",
-        label: "natnum(_24168)=&gt;natnum(s(_24168))",
-      },
-      {
-        _gvid: 4,
-        name: "nca501ad373fcc1a216a4dd5532df7758",
-        label: "natnum(0)",
-      },
-      {
-        _gvid: 5,
-        name: "nb93f0789b7150fdd0fb61e8742f2ec90",
-        label: "true=&gt;natnum(0)",
-      },
-      {
-        _gvid: 6,
-        name: "nb326b5062b2f0e69046810717534cb09",
-        label: "true",
-      },
-      {
-        _gvid: 7,
-        name: "n0c139d89dafd6af21f77d0c4bef86a89",
-        label: "true",
-      },
+    nodes: [
+      { id: "ensg00000140718", type: "gene" },
+      { id: "ensg00000177508", type: "gene" },
+      { id: "rs1421085", type: "sequence_variant" },
+      { id: "chr16_53550000_55450000_grch38", type: "tad" },
     ],
     edges: [
       {
-        _gvid: 0,
-        tail: 0,
-        head: 1,
+        source: "rs1421085",
+        target: "ensg00000177508",
+        label: "in_tad_with",
       },
       {
-        _gvid: 1,
-        tail: 1,
-        head: 2,
+        source: "rs1421085",
+        target: "ensg00000140718",
+        label: "closest_gene",
       },
       {
-        _gvid: 2,
-        tail: 2,
-        head: 3,
+        source: "ensg00000140718",
+        target: "chr16_53550000_55450000_grch38",
+        label: "in_tad_region",
       },
       {
-        _gvid: 3,
-        tail: 3,
-        head: 4,
+        source: "ensg00000177508",
+        target: "chr16_53550000_55450000_grch38",
+        label: "in_tad_region",
       },
       {
-        _gvid: 4,
-        tail: 4,
-        head: 5,
-      },
-      {
-        _gvid: 5,
-        tail: 5,
-        head: 6,
-      },
-      {
-        _gvid: 6,
-        tail: 6,
-        head: 7,
+        source: "rs1421085",
+        target: "ensg00000177508",
+        label: "eqtl",
       },
     ],
   });
@@ -90,27 +44,29 @@ export default function App() {
 
     var parser = new DOMParser();
     const elements = {
-      nodes: data.objects.map((o: any) => ({
+      nodes: data.nodes.map((n: any) => ({
         data: {
-          id: "n" + o._gvid.toString(),
-          name: o.name,
-          label: parser.parseFromString(o.label, "text/html").body.textContent,
+          ...n,
+          longestText: n.type.length > n.id.length ? n.type : n.id,
         },
       })),
       edges: data.edges.map((e: any) => ({
         data: {
-          id: e._gvid.toString(),
-          source: "n" + e.tail.toString(),
-          target: "n" + e.head.toString(),
+          ...e,
         },
       })),
     };
+
     setEle(elements);
 
     const pasteListener = (e: ClipboardEvent) => {
       e.preventDefault();
       const content = e.clipboardData?.getData("text");
-      setData(JSON.parse(content || "{}") || "");
+      console.log(content);
+
+      const d = JSON.parse(content || "{}") || "";
+      console.log(d);
+      setData(d);
     };
     addEventListener("paste", pasteListener);
     return () => removeEventListener("paste", pasteListener);

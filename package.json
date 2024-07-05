@@ -14,6 +14,8 @@
     "cytoscape": "^3.29.0",
     "cytoscape-dagre": "^2.5.0",
     "cytoscape-elk": "^2.2.0",
+    "cytoscape-klay": "^3.1.4",
+    "cytoscape-node-html-label": "^1.2.2",
     "cytoscape-tidytree": "^0.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
