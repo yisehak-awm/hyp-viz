@@ -1,33 +1,111 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import cytoscape from "cytoscape";
-import dagre from "cytoscape-dagre";
 import elk from "cytoscape-elk";
-import tidytree from "cytoscape-tidytree";
-import klay from "cytoscape-klay";
 import nodeHtmlLabel from "cytoscape-node-html-label";
 
-cytoscape.use(tidytree);
 cytoscape.use(elk);
-cytoscape.use(dagre);
-cytoscape.use(klay);
 cytoscape.use(nodeHtmlLabel);
 
 const LAYOUT = {
-  name: "klay",
+  name: "elk",
   elk: {
-    algorithm: "mrtree",
-  },
-  klay: {
-    nodePlacement: "LINEAR_SEGMENTS",
-    spacing: 200,
+    algorithm: "layered",
+    "elk.direction": "RIGHT",
+    "elk.alignment": "RIGHT",
+    "nodePlacement.strategy": "LINEAR_SEGMENTS",
+    "spacing.nodeNode": 100,
+    "spacing.nodeNodeBetweenLayers": 200,
+    "wrapping.strategy": "SINGLE_EDGE",
   },
 };
 
-export default ({ elements }: any) => {
+export default ({ data }: any) => {
   const cyto = useRef();
   const graph = useRef<HTMLDivElement>(null);
-  const [layout, setLayout] = useState("klay");
+  const [layout, setLayout] = useState("dagre");
   const [edgeStyle, setEdgeStyle] = useState("bezier");
+
+  const elements = useMemo(() => {
+    if (!data) return;
+
+    const elements = {
+      nodes: data.graph.nodes.map((n: any) => ({
+        data: {
+          ...n,
+          type: n.type.toLowerCase(),
+          longestText: n.type.length > n.id.length ? n.type : n.id,
+        },
+      })),
+      edges: data.graph.edges.map((e: any) => ({
+        data: {
+          ...e,
+        },
+      })),
+    };
+
+    // add a parent node for coexpressed nodes
+    elements.nodes.push({
+      data: {
+        id: "parent",
+        type: "parent",
+      },
+    });
+
+    const genes = elements.edges.reduce((acc, e) => {
+      if (e.data.label === "coexpressed_with") {
+        return [...acc, e.data.target];
+      }
+      return acc;
+    }, []);
+
+    elements.nodes = elements.nodes.map((n) => {
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          parent: genes.includes(n.data.id) ? "parent" : null,
+        },
+      };
+    });
+
+    elements.edges = elements.edges.map((e) => {
+      if (e.data.label === "coexpressed_with") {
+        return { ...e, data: { ...e.data, target: "parent" } };
+      }
+      if (e.data.label === "enriched_in") {
+        return { ...e, data: { ...e.data, source: "parent" } };
+      }
+      return e;
+    });
+
+    elements.edges = elements.edges.map((e) => {
+      if (e.data.label === "coexpressed_with") {
+        return { ...e, data: { ...e.data, target: "parent" } };
+      }
+      if (e.data.label === "enriched_in") {
+        return { ...e, data: { ...e.data, source: "parent" } };
+      }
+      return e;
+    });
+
+    elements.edges = elements.edges.reduce((acc, e) => {
+      if (
+        e.data.label === "coexpressed_with" &&
+        acc.find((a) => a.data.label === "coexpressed_with")
+      ) {
+        return acc;
+      }
+      if (
+        e.data.label === "enriched_in" &&
+        acc.find((a) => a.data.label === "enriched_in")
+      ) {
+        return acc;
+      }
+      return [...acc, e];
+    }, []);
+
+    return elements;
+  }, [data]);
 
   useEffect(() => {
     if (!cyto.current) return;
@@ -64,6 +142,7 @@ export default ({ elements }: any) => {
             "text-outline-width": 10,
             "taxi-direction": "vertical",
             "font-family": "monospace",
+            "font-size": "10px",
           },
         },
         {
@@ -73,7 +152,6 @@ export default ({ elements }: any) => {
             label: "data(longestText)",
             color: "#D6EEFF",
             width: "label",
-
             "text-valign": "center",
             "text-halign": "center",
             "padding-right": "30px",
@@ -98,9 +176,9 @@ export default ({ elements }: any) => {
         {
           selector: 'node[type="tad"]',
           style: {
-            "background-color": "#FFF5D6",
-            "border-color": "#ffcd2a",
-            color: "#FFF5D6",
+            "background-color": "#FCF5ED",
+            "border-color": "#E6AA68",
+            color: "#FCF5ED",
           },
         },
         {
@@ -109,6 +187,34 @@ export default ({ elements }: any) => {
             "background-color": "#dffae6",
             "border-color": "#3FCA6B",
             color: "#dffae6",
+          },
+        },
+        {
+          selector: 'node[type="parent"]',
+          label: "",
+          style: {
+            "background-color": "#fff",
+            "border-color": "#ccc",
+            "border-width": 1,
+            "border-style": "dashed",
+            color: "#dffae6",
+            opacity: 1,
+          },
+        },
+        {
+          selector: 'node[type="phenotype"]',
+          style: {
+            "background-color": "#faedf4",
+            "border-color": "#DC0073",
+            color: "#faedf4",
+          },
+        },
+        {
+          selector: 'node[type="go"]',
+          style: {
+            "background-color": "#FDFBC4",
+            "border-color": "#D7CF07",
+            color: "#FDFBC4",
           },
         },
         {
@@ -133,6 +239,7 @@ export default ({ elements }: any) => {
           valignBox: "center",
           cssClass: "",
           tpl(data) {
+            if (data.type === "parent") return ``;
             return `<div class="node_wrapper ${data.type}">
               <p class="type">${data.type.toUpperCase()}</p>
               <p class="${data.type}" class="id">${data.id}</p>
